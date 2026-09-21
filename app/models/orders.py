@@ -58,13 +58,15 @@ class OrderStatus(str, Enum):
 
 
 class Order(SQLModel, table=True):
+    __tablename__ = "orders"
+
     id: int | None = Field(
         default=None,
         primary_key=True,
     )
 
     customer_id: int = Field(
-        foreign_key="user.id"
+        foreign_key="users.id"
     )
 
     total: int = Field(
@@ -80,4 +82,4 @@ class Order(SQLModel, table=True):
     
     customer: "User" = Relationship(back_populates="orders")
     items: list["OrderItem"] = Relationship(back_populates="order")
-    pickup: "Pickup | None" = Relationship(back_populates="order")
+    pickup: "Pickup" = Relationship(back_populates="order")

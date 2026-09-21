@@ -26,7 +26,7 @@ class Pickup(SQLModel, table=True):
 
     slot: "Slot" = Relationship(back_populates = "pickups")
     
-    courier: "User | None" = Relationship(
+    courier: "User" = Relationship(
         back_populates="courier_pickups",
         sa_relationship_kwargs={
             "foreign_keys": "Pickup.courier_id"
@@ -34,5 +34,5 @@ class Pickup(SQLModel, table=True):
     )
     
     status_history: list["StatusHistory"] = Relationship(back_populates="pickup")
-    payment: "Payment | None" = Relationship(back_populates="pickup")
+    payment: "Payment" = Relationship(back_populates="pickup")
     

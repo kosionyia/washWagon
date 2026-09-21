@@ -1,11 +1,12 @@
-from typing import TYPE_CHECKING
 from datetime import datetime, timezone
 from sqlmodel import Relationship, SQLModel, Field
 
+from app.models.orders import OrderStatus
+
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from app.models.pickups import Pickup
-    from app.models.orders import OrderStatus
 
 
 class StatusHistory(SQLModel, table=True):
@@ -14,9 +15,10 @@ class StatusHistory(SQLModel, table=True):
 
     id: int | None = Field(default=None, primary_key=True)
     pickup_id: int = Field(foreign_key="pickups.id")
+    actor_id: int = Field(foreign_key="users.id")
     stage: OrderStatus
-    cereated_at: datetime = Field(
+    created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc)
     )
 
-    pickups: "Pickup" = Relationship(back_populates="status_history")
+    pickup: "Pickup" = Relationship(back_populates="status_history")

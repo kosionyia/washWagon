@@ -8,7 +8,7 @@ from app.schemas.user import (
     UserOut,
     UserRegister,
 )
-from app.services.user import (
+from app.services.auth import (
     confirm_user,
     register_customer,
 )

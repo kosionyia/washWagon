@@ -11,7 +11,7 @@ class Zone(SQLModel, table=True):
     __tablename__ = "zones"
 
     id: int | None = Field(default=None, primary_key=True)
-    name: str
+    name: str = Field(unique=True, index=True)
 
     slots: list["Slot"] = Relationship(back_populates="zone")
     users: list["User"] = Relationship(back_populates="zone")

@@ -31,9 +31,9 @@ class User(SQLModel, table=True):
         foreign_key="zones.id"
         )
 
-    zone: "Zone | None" = Relationship(back_populates="users")
+    zone: "Zone" = Relationship(back_populates="users")
 
-    ordes: list["Order"] = Relationship(
+    orders: list["Order"] = Relationship(
         back_populates="customer")
 
     courier_pickups: list["Pickup"] = Relationship(
