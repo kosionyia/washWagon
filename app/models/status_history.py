@@ -3,17 +3,16 @@ from sqlmodel import Relationship, SQLModel, Field
 
 from app.models.orders import OrderStatus
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
     from app.models.pickups import Pickup
 
 
 class StatusHistory(SQLModel, table=True):
-
     __tablename__ = "status_history"
 
-    id: int | None = Field(default=None, primary_key=True)
+    id: Optional[int] = Field(default=None, primary_key=True)
     pickup_id: int = Field(foreign_key="pickups.id")
     actor_id: int = Field(foreign_key="users.id")
     stage: OrderStatus

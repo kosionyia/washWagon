@@ -3,15 +3,12 @@ from datetime import date
 from fastapi import APIRouter, Depends, Query, status
 from sqlmodel import Session
 
+from app.dependencies import get_current_user, require_role
 from app.models.user import Role, User
 from app.schemas.slots import (
     CreateSlot,
     UpdateSlot,
     SlotOut,
-)
-from app.services.dependencies import (
-    get_current_user,
-    require_role,
 )
 from app.services.slots import (
     create_slot,
@@ -49,6 +46,8 @@ def create(
 @router.get(
     "/",
     response_model=list[SlotOut],
+    status_code=status.HTTP_200_OK,
+
 )
 def list_all(
     zone_id: int | None = Query(default=None, gt=0),
@@ -66,6 +65,8 @@ def list_all(
 @router.get(
     "/{slot_id}",
     response_model=SlotOut,
+    status_code=status.HTTP_200_OK,
+
 )
 def read(
     slot_id: int,
@@ -81,6 +82,8 @@ def read(
 @router.patch(
     "/{slot_id}",
     response_model=SlotOut,
+    status_code=status.HTTP_200_OK,
+
 )
 def update(
     slot_id: int,

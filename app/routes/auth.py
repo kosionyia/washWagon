@@ -7,6 +7,7 @@ from app.schemas.user import (
     TokenResponse,
     UserOut,
     UserRegister,
+    UserLogin
 )
 from app.services.auth import (
     confirm_user,
@@ -47,10 +48,10 @@ def login(
 
     token = confirm_user(
         session=session,
-        email=form.username,
+        data=UserLogin(
+            email=form.username,
         password=form.password,
+        ),
     )
 
-    return TokenResponse(
-        access_token=token,
-    )
+    return token

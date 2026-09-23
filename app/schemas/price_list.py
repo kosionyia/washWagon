@@ -1,14 +1,18 @@
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, Field
 
 from app.schemas.order import GarmentType
 
 
-class PriceListUpdate(BaseModel):
+class CreatePrice(BaseModel):
     garment: GarmentType
     unit_price: int = Field(gt=0)
 
 
-class PriceListOut(PriceListUpdate):
-    id: int
+class UpdatePrice(BaseModel):
+    unit_price: int = Field(gt=0)
 
-    model_config = ConfigDict(from_attributes=True)
+
+class PriceOut(BaseModel):
+    id: int
+    garment: GarmentType
+    unit_price: int
