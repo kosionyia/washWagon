@@ -44,10 +44,12 @@ def get_current_user(
     if user_id is None:
         raise credentials_error
 
-    user = get_user_by_id(
-        session,
-        int(user_id),
-    )
+    try:
+        parsed_user_id = int(user_id)
+    except (TypeError, ValueError):
+        raise credentials_error from None
+
+    user = get_user_by_id(session, parsed_user_id)
 
     if user is None:
         raise credentials_error

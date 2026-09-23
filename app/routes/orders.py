@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, status
+from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
 
 from app.dependencies import get_current_user, require_role
@@ -37,6 +38,7 @@ def create_customer_order(
 @router.get(
     "/",
     response_model=list[OrderOut],
+    status_code=status.HTTP_200_OK,
 )
 def list_orders(
     session: Session = Depends(get_session),
@@ -49,19 +51,31 @@ def list_orders(
             Order.customer_id == current_user.id
         )
 
+    statement = statement.options(
+        selectinload(Order.items),
+        selectinload(Order.pickup),
+    )
     return session.exec(statement).all()
 
 
 @router.get(
     "/{order_id}",
     response_model=OrderOut,
+    status_code=status.HTTP_200_OK,
 )
 def get_order(
     order_id: int,
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
-    order = session.get(Order, order_id)
+    order = session.exec(
+        select(Order)
+        .where(Order.id == order_id)
+        .options(
+            selectinload(Order.items),
+            selectinload(Order.pickup),
+        )
+    ).first()
 
     if order is None:
         from fastapi import HTTPException

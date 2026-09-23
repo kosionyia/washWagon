@@ -7,6 +7,11 @@ from app.utils.security import hash_password
 
 
 def create_ops_manager() -> None:
+    if not settings.OPS_MANAGER_PASSWORD:
+        raise RuntimeError(
+            "OPS_MANAGER_PASSWORD is required to seed the ops manager."
+        )
+
     with Session(engine) as session:
         statement = select(User).where(
             User.email == settings.OPS_MANAGER_EMAIL
@@ -35,7 +40,7 @@ def create_ops_manager() -> None:
         session.refresh(ops_manager)
 
         print(
-            f"Ops Manager created successfully. "
+            "Ops Manager created successfully. "
             f"User ID: {ops_manager.id}"
         )
 
