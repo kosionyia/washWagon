@@ -1,6 +1,6 @@
 from datetime import date, time
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class CreateSlot(BaseModel):
@@ -32,11 +32,8 @@ class UpdateSlot(BaseModel):
         return self
 
 
-class SlotOut(BaseModel):
+class SlotOut(CreateSlot):
     id: int
-    zone_id: int
-    capacity: int
     booked_count: int
-    date: date
-    start_at: time
-    stop_at: time
+
+    model_config = ConfigDict(from_attributes=True)
