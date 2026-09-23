@@ -41,8 +41,6 @@ def create(
         session=session,
         data=data,
     )
-
-
 @router.get(
     "/",
     response_model=list[SlotOut],
@@ -60,7 +58,6 @@ def list_all(
         zone_id=zone_id,
         slot_date=slot_date,
     )
-
 
 @router.get(
     "/{slot_id}",
@@ -98,4 +95,3 @@ def update(
         slot_id=slot_id,
         data=data,
     )
-    

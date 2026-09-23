@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class CreateZone(BaseModel):
@@ -11,6 +11,7 @@ class UpdateZone(BaseModel):
     )
     
 
-class ZoneOut(BaseModel):
+class ZoneOut(CreateZone):
     id: int
-    name: str
+
+    model_config = ConfigDict(from_attributes=True)

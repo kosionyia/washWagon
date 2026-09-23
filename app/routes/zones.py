@@ -1,13 +1,13 @@
 from fastapi import APIRouter, Depends, status
 from sqlmodel import Session
 
+from app.dependencies import get_current_user, require_role
 from app.models.user import Role, User
 from app.schemas.zones import (
     CreateZone,
     UpdateZone,
     ZoneOut,
 )
-from app.services.dependencies import require_role, get_current_user
 from app.services.zones import (
     create_zone,
     get_zones,
