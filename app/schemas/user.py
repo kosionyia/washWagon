@@ -1,5 +1,5 @@
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from app.models.user import Role
 
 
@@ -23,7 +23,8 @@ class UserOut(User):
     id: int
     role: Role = Role.CUSTOMER
 
-
+    model_config = ConfigDict(from_attributes=True)
+    
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"

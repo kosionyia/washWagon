@@ -10,8 +10,8 @@ class Settings(BaseSettings):
     WEBHOOK_SECRET: str = "washwagon"
 
     OPS_MANAGER_NAME: str = "WashWagon Ops"
-    OPS_MANAGER_EMAIL: str
-    OPS_MANAGER_PASSWORD: str
+    OPS_MANAGER_EMAIL: str = "manager@washwagon.com"
+    OPS_MANAGER_PASSWORD: str = "washwagon26"
 
     model_config = SettingsConfigDict(
         env_file=".env",

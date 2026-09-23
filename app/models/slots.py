@@ -1,9 +1,9 @@
-from typing import Optional
 
 from datetime import date, time
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
-from sqlmodel import Field, Relationship, SQLModel
+from sqlalchemy import UniqueConstraint
+from sqlmodel import SQLModel, Field, Relationship
 
 if TYPE_CHECKING:
     from app.models.pickups import Pickup
@@ -12,6 +12,14 @@ if TYPE_CHECKING:
 
 class Slot(SQLModel, table=True):
     __tablename__ = "slots"
+    __table_args__ = (
+        UniqueConstraint(
+            "zone_id",
+            "date",
+            "start_at",
+            name="uq_slots_zone_date_start",
+        ),
+    )
 
     id: Optional[int] = Field(default=None, primary_key=True)
     zone_id: int = Field(foreign_key="zones.id")

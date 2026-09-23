@@ -1,13 +1,10 @@
 from fastapi import APIRouter, Depends, status
 from sqlmodel import Session, select
 
+from app.dependencies import get_current_user, require_role
 from app.models.user import Role, User
 from app.schemas.user import CourierCreate, UserOut
-from app.services.dependencies import (
-    get_current_user,
-    require_role,
-)
-from app.services.user import create_courier
+from app.services.auth import create_courier
 from app.utils.database import get_session
 
 
@@ -20,6 +17,8 @@ router = APIRouter(
 @router.get(
     "/me",
     response_model=UserOut,
+    status_code=status.HTTP_200_OK,
+
 )
 def get_me(
     current_user: User = Depends(get_current_user),
@@ -30,6 +29,7 @@ def get_me(
 @router.get(
     "/",
     response_model=list[UserOut],
+    status_code=status.HTTP_200_OK,
 )
 def list_users(
     session: Session = Depends(get_session),

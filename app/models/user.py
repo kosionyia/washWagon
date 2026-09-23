@@ -29,7 +29,9 @@ class User(SQLModel, table=True):
     zone_id: Optional[int] = Field(default=None, foreign_key="zones.id")
 
     zone: Optional["Zone"] = Relationship(back_populates="users")
-    orders: list["Order"] = Relationship(back_populates="customer")
+    orders: list["Order"] = Relationship(
+        back_populates="customer")
+
     courier_pickups: list["Pickup"] = Relationship(
         back_populates="courier",
         sa_relationship_kwargs={"foreign_keys": "Pickup.courier_id"},

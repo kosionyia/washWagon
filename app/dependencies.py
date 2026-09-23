@@ -5,9 +5,10 @@ from fastapi.security import OAuth2PasswordBearer
 from sqlmodel import Session
 
 from app.models.user import Role, User
+from app.repositories.users import get_user_by_id
+from app.schemas.user import UserOut
 from app.utils.config import settings
 from app.utils.database import get_session
-from app.services.auth import get_user_by_id
 
 
 oauth2_scheme = OAuth2PasswordBearer(
@@ -63,7 +64,7 @@ def require_role(*allowed_roles: Role):
         if current_user.role not in allowed_roles:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="You do not have permission to perform this action",
+                detail="Access Denied",
             )
 
         return current_user

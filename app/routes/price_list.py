@@ -1,15 +1,12 @@
 from fastapi import APIRouter, Depends, status
 from sqlmodel import Session
 
+from app.dependencies import get_current_user, require_role
 from app.models.user import Role, User
 from app.schemas.price_list import (
     CreatePrice,
     PriceOut,
     UpdatePrice,
-)
-from app.services.dependencies import (
-    get_current_user,
-    require_role,
 )
 from app.services.price_list import (
     create_price,

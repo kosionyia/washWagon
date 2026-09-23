@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Depends, status
 from sqlmodel import Session, select
 
+from app.dependencies import get_current_user, require_role
 from app.models.orders import Order
 from app.models.user import Role, User
 from app.schemas.order import CreateOrder, OrderOut
-from app.services.dependencies import get_current_user, require_role
 from app.services.orders import create_order
 from app.utils.database import get_session
 
