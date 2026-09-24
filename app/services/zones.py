@@ -37,7 +37,7 @@ def get_zones(
     session: Session,
 ) -> list[Zone]:
 
-    statement = select(Zone).order_by(Zone.id)
+    statement = select(Zone).order_by(Zone.id)  # type: ignore[arg-type]
 
     return list(
         session.exec(statement).all()

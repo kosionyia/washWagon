@@ -7,6 +7,8 @@ from app.routes import slots
 from app.routes import users
 from app.routes import orders
 from app.routes import price_list
+from app.routes import payments
+from app.routes import reports
 
 
 app = FastAPI(
@@ -28,3 +30,5 @@ app.include_router(slots.router)
 app.include_router(users.router)
 app.include_router(orders.router)
 app.include_router(price_list.router)
+app.include_router(payments.router)
+app.include_router(reports.router)
