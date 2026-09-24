@@ -53,7 +53,7 @@ def initialize_online_payment(
         if order is None:
             raise HTTPException(status_code=404, detail="Order not found")
         if order.customer_id != customer.id:
-            raise HTTPException(status_code=403, detail="Access denied")
+            raise HTTPException(status_code=403, detail="Please select your order ID")
         if order.status == OrderStatus.CANCELLED:
             raise HTTPException(status_code=409, detail="A cancelled order cannot be paid")
 

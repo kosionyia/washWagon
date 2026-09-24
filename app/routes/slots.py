@@ -12,8 +12,9 @@ from app.schemas.slots import (
 )
 from app.services.slots import (
     create_slot,
+    get_available_slots,
     get_slots,
-    get_slot,
+    get_slot_for_user,
     update_slot,
 )
 from app.utils.database import get_session
@@ -53,11 +54,32 @@ def list_all(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
+    if current_user.role == Role.CUSTOMER:
+        zone_id = current_user.zone_id
+
     return get_slots(
         session=session,
         zone_id=zone_id,
         slot_date=slot_date,
     )
+
+
+@router.get(
+    "/zone",
+    response_model=list[SlotOut],
+    status_code=status.HTTP_200_OK,
+)
+def list_available(
+    slot_date: date,
+    session: Session = Depends(get_session),
+    customer: User = Depends(require_role(Role.CUSTOMER)),
+):
+    return get_available_slots(
+        session=session,
+        customer=customer,
+        slot_date=slot_date,
+    )
+
 
 @router.get(
     "/{slot_id}",
@@ -70,9 +92,10 @@ def read(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
-    return get_slot(
+    return get_slot_for_user(
         session=session,
         slot_id=slot_id,
+        user=current_user,
     )
 
 

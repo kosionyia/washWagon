@@ -1,9 +1,10 @@
-from datetime import date
+from datetime import date, datetime, timezone
 
 from fastapi import HTTPException, status
 from sqlmodel import Session, select
 
 from app.models.slots import Slot
+from app.models.user import Role, User
 from app.models.zones import Zone
 from app.schemas.slots import CreateSlot, UpdateSlot
 
@@ -76,6 +77,40 @@ def get_slots(
     return list(session.exec(statement).all())
 
 
+def get_available_slots(
+    session: Session,
+    customer: User,
+    slot_date: date,
+) -> list[Slot]:
+    """Return bookable slots in the logged-in customer's zone."""
+    if customer.zone_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="Customer does not belong to a zone",
+        )
+
+    today = datetime.now(timezone.utc).date()
+    if slot_date < today:
+        return []
+
+    statement = (
+        select(Slot)
+        .where(
+            Slot.zone_id == customer.zone_id,
+            Slot.date == slot_date,
+            Slot.booked_count < Slot.capacity,
+        )
+        .order_by(Slot.start_at, Slot.id)
+    )
+    slots = list(session.exec(statement).all())
+
+    if slot_date == today:
+        current_time = datetime.now(timezone.utc).time().replace(tzinfo=None)
+        slots = [slot for slot in slots if slot.start_at > current_time]
+
+    return slots
+
+
 def get_slot(
     session: Session,
     slot_id: int,
@@ -89,6 +124,21 @@ def get_slot(
             detail="Slot not found",
         )
 
+    return slot
+
+
+def get_slot_for_user(
+    session: Session,
+    slot_id: int,
+    user: User,
+) -> Slot:
+    """Return a slot after applying customer zone access."""
+    slot = get_slot(session, slot_id)
+    if user.role == Role.CUSTOMER and slot.zone_id != user.zone_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This slot is not available in your zone",
+        )
     return slot
 
 

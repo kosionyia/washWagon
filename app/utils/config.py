@@ -11,6 +11,7 @@ class Settings(BaseSettings):
 
 
     PAYSTACK_SECRET_KEY: SecretStr
+    PAYSTACK_BASE_URL: str = "https://api.paystack.co"
     PAYSTACK_CALLBACK_URL: str | None = None
     PAYSTACK_CURRENCY: str = "NGN"
 
