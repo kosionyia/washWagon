@@ -1,10 +1,8 @@
 from fastapi import APIRouter, Depends, status
-from sqlalchemy.orm import selectinload
-from sqlmodel import Session, select
+from fastapi.responses import StreamingResponse
+from sqlmodel import Session
 
 from app.dependencies import get_current_user, require_role
-from app.models.orders import Order
-from app.models.pickups import Pickup
 from app.models.user import Role, User
 from app.schemas.order import (
     AssignCourier,
@@ -13,15 +11,15 @@ from app.schemas.order import (
     StatusHistoryOut,
     UpdateOrderStatus,
 )
-from app.services.orders import (
-    accept_order,
-    assign_courier,
-    can_view_order,
-    create_order,
+from app.services.order_assignments import accept_order, assign_courier
+from app.services.order_booking import create_order
+from app.services.order_events import stream_order_status
+from app.services.order_queries import (
     get_order_history,
-    get_order_with_booking,
-    update_order_status,
+    get_order_for_user,
+    list_orders_for_user,
 )
+from app.services.order_status import update_order_status
 from app.utils.database import get_session
 
 
@@ -59,24 +57,7 @@ def list_orders(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
-    if current_user.role == Role.OPS_MANAGER:
-        statement = select(Order)
-    elif current_user.role == Role.CUSTOMER:
-        statement = select(Order).where(
-            Order.customer_id == current_user.id
-        )
-    else:
-        statement = (
-            select(Order)
-            .join(Pickup)
-            .where(Pickup.courier_id == current_user.id)
-        )
-
-    statement = statement.options(
-        selectinload(Order.items),           # type: ignore[arg-type]
-        selectinload(Order.pickup),              # type: ignore[arg-type]
-    )
-    return session.exec(statement).all()
+    return list_orders_for_user(session, current_user)
 
 
 @router.get(
@@ -89,29 +70,7 @@ def get_order(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
-    order = get_order_with_booking(session, order_id)
-
-    if order is None:
-        from fastapi import HTTPException
-
-        raise HTTPException(
-            status_code=404,
-            detail="Order not found",
-        )
-
-    if order.pickup is None or not can_view_order(
-        order,
-        order.pickup,
-        current_user,
-    ):
-        from fastapi import HTTPException
-
-        raise HTTPException(
-            status_code=403,
-            detail="You do not have permission to view this order",
-        )
-
-    return order
+    return get_order_for_user(session, order_id, current_user)
 
 
 @router.patch(
@@ -148,6 +107,30 @@ def accept_pickup(
         session=session,
         order_id=order_id,
         courier=courier,
+    )
+
+
+@router.get(
+    "/{order_id}/stream",
+    response_class=StreamingResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def stream_order_updates(
+    order_id: int,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    # Authorize before opening the long-lived Redis subscription.
+    get_order_for_user(session, order_id, current_user)
+
+    return StreamingResponse(
+        stream_order_status(order_id),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
     )
 
 
