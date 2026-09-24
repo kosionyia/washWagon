@@ -42,7 +42,11 @@ class Order(SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     customer_id: int = Field(foreign_key="users.id")
-    total: int = Field(default=0, ge=0)
+    total: int = Field(
+        default=0, 
+        ge=0,
+        description="Order total in kobo",
+        )
     status: OrderStatus = Field(default=OrderStatus.BOOKED)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 

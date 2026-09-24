@@ -10,9 +10,23 @@ from app.models.orders import Order, OrderStatus
 from app.models.pickups import Pickup
 from app.models.slots import Slot
 from app.models.status_history import StatusHistory
-from app.models.user import User
+from app.models.user import Role, User
 from app.repositories.prices import get_price_by_garment
-from app.schemas.order import CreateOrder
+from app.schemas.order import AssignCourier, CreateOrder, UpdateOrderStatus
+
+
+def get_order_with_booking(
+    session: Session,
+    order_id: int,
+) -> Order | None:
+    return session.exec(
+        select(Order)
+        .where(Order.id == order_id)
+        .options(
+            selectinload(Order.items),                   # type: ignore[arg-type]
+            selectinload(Order.pickup),                      # type: ignore[arg-type]
+        )
+    ).first()
 
 
 def create_order(
@@ -66,7 +80,7 @@ def create_order(
             price = get_price_by_garment(session, item_data.garment)
             if price is None:
                 raise HTTPException(
-                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                     detail=f"No price found for {item_data.garment.value}",
                 )
             priced_items.append((item_data, price))
@@ -118,8 +132,8 @@ def create_order(
             select(Order)
             .where(Order.id == order_id)
             .options(
-                selectinload(Order.items),
-                selectinload(Order.pickup),
+                selectinload(Order.items),                   # type: ignore[arg-type]
+                selectinload(Order.pickup),                      # type: ignore[arg-type]
             )
         ).one()
 
@@ -135,3 +149,219 @@ def create_order(
     except Exception:
         session.rollback()
         raise
+
+
+def assign_courier(
+    session: Session,
+    order_id: int,
+    data: AssignCourier,
+) -> Order:
+    try:
+        order = session.exec(
+            select(Order)
+            .where(Order.id == order_id)
+            .with_for_update()
+        ).first()
+        if order is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Order not found",
+            )
+        if order.status.is_terminal():
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="A courier cannot be assigned to a completed order",
+            )
+
+        pickup = session.exec(
+            select(Pickup)
+            .where(Pickup.order_id == order_id)
+            .with_for_update()
+        ).first()
+        if pickup is None:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Order has no pickup booking",
+            )
+
+        courier = session.get(User, data.courier_id)
+        if courier is None or courier.role != Role.COURIER:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail="The selected user is not a courier",
+            )
+
+        slot = session.get(Slot, pickup.slot_id)
+        if slot is None:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Pickup slot no longer exists",
+            )
+        if courier.zone_id != slot.zone_id:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail="Courier must belong to the pickup zone",
+            )
+
+        pickup.courier_id = courier.id
+        session.add(pickup)
+        session.commit()
+        result = get_order_with_booking(session, order_id)
+        if result is None:
+            raise RuntimeError("Assigned order could not be reloaded")
+        return result
+
+    except HTTPException:
+        session.rollback()
+        raise
+    except Exception:
+        session.rollback()
+        raise
+
+
+def update_order_status(
+    session: Session,
+    order_id: int,
+    data: UpdateOrderStatus,
+    actor: User,
+) -> Order:
+    try:
+        if actor.id is None:
+            raise RuntimeError("Cannot record an action for an unsaved user")
+
+        order = session.exec(
+            select(Order)
+            .where(Order.id == order_id)
+            .with_for_update()
+        ).first()
+        if order is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Order not found",
+            )
+
+        pickup = session.exec(
+            select(Pickup)
+            .where(Pickup.order_id == order_id)
+            .with_for_update()
+        ).first()
+        if pickup is None:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Order has no pickup booking",
+            )
+
+        _authorize_status_change(order, pickup, actor, data.status)
+        if not order.status.can_transition_to(data.status):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=(
+                    f"Order cannot move from {order.status.value} "
+                    f"to {data.status.value}"
+                ),
+            )
+
+        if data.status == OrderStatus.CANCELLED:
+            slot = session.exec(
+                select(Slot)
+                .where(Slot.id == pickup.slot_id)
+                .with_for_update()
+            ).first()
+            if slot is None:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="Pickup slot no longer exists",
+                )
+            slot.booked_count = max(0, slot.booked_count - 1)
+            session.add(slot)
+
+        order.status = data.status
+        session.add(order)
+        session.add(
+            StatusHistory(
+                pickup_id=pickup.id,
+                actor_id=actor.id,
+                stage=data.status,
+            )
+        )
+        session.commit()
+
+        result = get_order_with_booking(session, order_id)
+        if result is None:
+            raise RuntimeError("Updated order could not be reloaded")
+        return result
+
+    except HTTPException:
+        session.rollback()
+        raise
+    except Exception:
+        session.rollback()
+        raise
+
+
+def get_order_history(
+    session: Session,
+    order_id: int,
+    viewer: User,
+) -> list[StatusHistory]:
+    order = get_order_with_booking(session, order_id)
+    if order is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Order not found",
+        )
+    pickup = order.pickup
+    if pickup is None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Order has no pickup booking",
+        )
+    if not can_view_order(order, pickup, viewer):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have permission to view this order",
+        )
+    return list(
+        session.exec(
+            select(StatusHistory)
+            .where(StatusHistory.pickup_id == pickup.id)
+            .order_by(StatusHistory.created_at, StatusHistory.id)    # type: ignore[arg-type]
+        ).all()
+    )
+
+
+def can_view_order(order: Order, pickup: Pickup, viewer: User) -> bool:
+    if viewer.role == Role.OPS_MANAGER:
+        return True
+    if viewer.role == Role.CUSTOMER:
+        return order.customer_id == viewer.id
+    return viewer.role == Role.COURIER and pickup.courier_id == viewer.id
+
+
+def _authorize_status_change(
+    order: Order,
+    pickup: Pickup,
+    actor: User,
+    next_status: OrderStatus,
+) -> None:
+    if actor.role == Role.OPS_MANAGER:
+        return
+    if actor.role == Role.CUSTOMER:
+        if (
+            order.customer_id == actor.id
+            and order.status == OrderStatus.BOOKED
+            and next_status == OrderStatus.CANCELLED
+        ):
+            return
+    elif actor.role == Role.COURIER:
+        courier_stages = {
+            OrderStatus.COLLECTED,
+            OrderStatus.OUT_FOR_DELIVERY,
+            OrderStatus.DELIVERED,
+        }
+        if pickup.courier_id == actor.id and next_status in courier_stages:
+            return
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="You do not have permission to make this status change",
+    )

@@ -19,7 +19,10 @@ class OrderItem(SQLModel, table=True):
     price_list_id: int = Field(foreign_key="price_list.id")
     garment: GarmentType
     quantity: int = Field(gt=0)
-    unit_price: int = Field(gt=0)
+    unit_price: int = Field(
+        gt=0,
+        description="Unit price in kobo",
+        )
 
     order: "Order" = Relationship(back_populates="items")
     price_list: "PriceList" = Relationship()
