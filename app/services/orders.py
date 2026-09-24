@@ -219,6 +219,85 @@ def assign_courier(
         raise
 
 
+def accept_order(
+    session: Session,
+    order_id: int,
+    courier: User,
+) -> Order:
+    """Assign an unclaimed pickup to the courier accepting it."""
+    try:
+        if courier.id is None or courier.role != Role.COURIER:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Only couriers can accept pickups",
+            )
+
+        order = session.exec(
+            select(Order)
+            .where(Order.id == order_id)
+            .with_for_update()
+        ).first()
+        if order is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Order not found",
+            )
+        if order.status.is_terminal():
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="A completed order cannot be accepted",
+            )
+
+        pickup = session.exec(
+            select(Pickup)
+            .where(Pickup.order_id == order_id)
+            .with_for_update()
+        ).first()
+        if pickup is None:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Order has no pickup booking",
+            )
+        if pickup.courier_id is not None:
+            if pickup.courier_id != courier.id:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="Pickup has already been accepted",
+                )
+            session.commit()
+            result = get_order_with_booking(session, order_id)
+            if result is None:
+                raise RuntimeError("Accepted order could not be reloaded")
+            return result
+
+        slot = session.get(Slot, pickup.slot_id)
+        if slot is None:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Pickup slot no longer exists",
+            )
+        if courier.zone_id != slot.zone_id:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail="Courier must belong to the pickup zone",
+            )
+
+        pickup.courier_id = courier.id
+        session.add(pickup)
+        session.commit()
+
+        result = get_order_with_booking(session, order_id)
+        if result is None:
+            raise RuntimeError("Accepted order could not be reloaded")
+        return result
+    except HTTPException:
+        session.rollback()
+        raise
+    except Exception:
+        session.rollback()
+        raise
+
+
 def update_order_status(
     session: Session,
     order_id: int,
@@ -356,6 +435,8 @@ def _authorize_status_change(
     elif actor.role == Role.COURIER:
         courier_stages = {
             OrderStatus.COLLECTED,
+            OrderStatus.WASHING,
+            OrderStatus.READY,
             OrderStatus.OUT_FOR_DELIVERY,
             OrderStatus.DELIVERED,
         }

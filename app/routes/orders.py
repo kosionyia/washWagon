@@ -14,6 +14,7 @@ from app.schemas.order import (
     UpdateOrderStatus,
 )
 from app.services.orders import (
+    accept_order,
     assign_courier,
     can_view_order,
     create_order,
@@ -130,6 +131,23 @@ def assign_order_courier(
         session=session,
         order_id=order_id,
         data=data,
+    )
+
+
+@router.post(
+    "/{order_id}/accept",
+    response_model=OrderOut,
+    status_code=status.HTTP_200_OK,
+)
+def accept_pickup(
+    order_id: int,
+    session: Session = Depends(get_session),
+    courier: User = Depends(require_role(Role.COURIER)),
+):
+    return accept_order(
+        session=session,
+        order_id=order_id,
+        courier=courier,
     )
 
 
