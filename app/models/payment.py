@@ -21,7 +21,10 @@ class Payment(SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     pickup_id: int = Field(foreign_key="pickups.id", unique=True)
-    amount: int = Field(gt=0)
+    amount: int = Field(
+        gt=0,
+        description="Payment amount in kobo", 
+        )
     status: PaymentStatus = Field(default=PaymentStatus.PENDING)
     reference: str = Field(unique=True, index=True)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

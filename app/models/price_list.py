@@ -9,5 +9,8 @@ class PriceList(SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     garment: GarmentType = Field(unique=True, index=True)
-    unit_price: int = Field(gt=0)
+    unit_price: int = Field(
+        gt=0,
+        description="Garment unit price in kobo",
+        )
 
