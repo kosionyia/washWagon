@@ -63,7 +63,6 @@ def list_all(
         slot_date=slot_date,
     )
 
-
 @router.get(
     "/zone",
     response_model=list[SlotOut],

@@ -1,6 +1,8 @@
 from fastapi import APIRouter, Depends, status
+
+from app.models.orders import Order
 from fastapi.responses import StreamingResponse
-from sqlmodel import Session
+from sqlmodel import Session, select
 
 from app.dependencies import get_current_user, require_role
 from app.models.user import Role, User
@@ -57,7 +59,18 @@ def list_orders(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
-    return list_orders_for_user(session, current_user)
+    if current_user.role == Role.OPS_MANAGER:
+        statement = select(Order)
+    else:
+        statement = select(Order).where(
+            Order.customer_id == current_user.id
+        )
+
+    statement = statement.options(
+        selectinload(Order.items),
+        selectinload(Order.pickup),
+    )
+    return session.exec(statement).all()
 
 
 @router.get(
