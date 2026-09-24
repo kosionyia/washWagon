@@ -1,6 +1,6 @@
 from app.models.order_item import OrderItem
 from app.models.orders import Order, OrderStatus
-from app.models.payment import Payment, PaymentStatus
+from app.models.payment import Payment, PaymentMethod, PaymentStatus
 from app.models.payment_event import PaymentEvent
 from app.models.pickups import Pickup
 from app.models.price_list import PriceList
@@ -14,6 +14,7 @@ __all__ = [
     "Order",
     "OrderStatus",
     "Payment",
+    "PaymentMethod",
     "PaymentStatus",
     "PaymentEvent",
     "Pickup",

@@ -16,6 +16,11 @@ class PaymentStatus(str, Enum):
     FAILED = "failed"
 
 
+class PaymentMethod(str, Enum):
+    ONLINE = "online"
+    CASH = "cash"
+
+
 class Payment(SQLModel, table=True):
     __tablename__ = "payments"
 
@@ -26,7 +31,12 @@ class Payment(SQLModel, table=True):
         description="Payment amount in kobo", 
         )
     status: PaymentStatus = Field(default=PaymentStatus.PENDING)
+    method: PaymentMethod = Field(default=PaymentMethod.ONLINE)
+    currency: str = Field(default="NGN", max_length=3)
     reference: str = Field(unique=True, index=True)
+    authorization_url: Optional[str] = None
+    access_code: Optional[str] = None
+    paid_at: Optional[datetime] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     pickup: "Pickup" = Relationship(back_populates="payment")
