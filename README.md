@@ -275,13 +275,12 @@ uv run pytest -q
 Run only the examiner-aligned acceptance tests:
 
 ```bash
-uv run pytest tests/test_acceptance.py -q
+uv run pytest -q -k acceptance
 ```
 
-`tests/test_acceptance.py` contains one pytest test for every acceptance-
-criteria bullet in `questions.txt`, including concurrent last-space booking,
-webhook idempotency, invalid stage transitions, and SSE delivery within one
-second.
+The five acceptance test files cover capacity and concurrency, past-slot
+cancellation rules, duplicate-slot uniqueness, ordered status history, and
+item-price calculation.
 
 ## Authors
 
