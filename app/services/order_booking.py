@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 
 from fastapi import HTTPException, status
+from sqlalchemy import update
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
 
@@ -31,6 +32,21 @@ def create_order(
         ).first()
         _validate_slot(slot, customer)
         assert slot is not None
+
+        reservation = session.exec(
+            update(Slot)
+            .where(
+                Slot.id == data.slot_id,
+                Slot.booked_count < Slot.capacity,
+            )
+            .values(booked_count=Slot.booked_count + 1)
+            .execution_options(synchronize_session=False)
+        )
+        if reservation.rowcount != 1:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail='Slot is full',
+            )
 
         priced_items = []
         total = 0
@@ -80,8 +96,6 @@ def create_order(
                 stage=OrderStatus.BOOKED,
             )
         )
-        slot.booked_count += 1
-        session.add(slot)
         session.commit()
 
         result = get_order_with_booking(session, order.id)
@@ -110,7 +124,7 @@ def _validate_slot(slot: Slot | None, customer: User) -> None:
         )
     if customer.zone_id is None or slot.zone_id != customer.zone_id:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="Slot is not available for your zone",
         )
 
@@ -121,7 +135,7 @@ def _validate_slot(slot: Slot | None, customer: User) -> None:
     )
     if slot_start <= datetime.now(timezone.utc):
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="Cannot book a slot in the past",
         )
     if slot.booked_count >= slot.capacity:
