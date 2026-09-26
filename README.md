@@ -8,6 +8,9 @@ The booking system prevents a slot from exceeding its configured capacity,
 including when multiple customers attempt to reserve the final space at the
 same time.
 
+Why this project matters
+WashWagon demonstrates backend engineering concepts beyond basic CRUD, including concurrency control, transactional consistency, role-based authorization, idempotent payment webhooks, live updates with Redis Pub/Sub, and automated testing.
+
 ## Features
 
 ### Customers
